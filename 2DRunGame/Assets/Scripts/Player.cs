@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 
 public class Player : MonoBehaviour
 {
@@ -12,12 +13,28 @@ public class Player : MonoBehaviour
 
     public bool isGround;
     public int coin;
+    public float hpMax;
 
     [Header("音效區域")]
     public AudioClip soundHit;
     public AudioClip soundSlide;
     public AudioClip soundJump;
     public AudioClip soundCoin;
+
+    [Header("金幣數量")]
+    public Text textcoin;
+    [Header("血條")]
+    public Image imageHp;
+
+
+    [Header("結束畫面")]
+    public GameObject final;
+
+    private bool dead;
+
+    [Header("過關的標題與金幣")]
+    public Text textTitle;
+    public Text textFinalCoin;
 
     public Animator ani;
     public Rigidbody2D rig;
@@ -106,32 +123,56 @@ public class Player : MonoBehaviour
     /// <summary>
     /// 吃金幣
     /// </summary>
-    private void EatCoin()
+    private void EatCoin(GameObject obj)
     {
-
+        coin ++;                            // 遞增1
+        aud.PlayOneShot(soundCoin, 1.2f);   // 播放音效
+        textcoin.text = "金幣數量:" + coin; // 文字介面.文字 = 字串 + 整數
+        Destroy(obj);                       // 刪除(金幣，延遲時間)
     }
 
     /// <summary>
     /// 受傷
     /// </summary>
-    private void Hit()
+    private void Hit(GameObject obj)
     {
-
+        // 扣血 hp-=30
+        hp -= 50;
+        // 播放音效
+        aud.PlayOneShot(soundHit, 1.2f);
+        // 刪除障礙物
+        Destroy(obj);
+        // 更新血條
+        imageHp.fillAmount = hp / hpMax;
+        // 如果 血量 <= 0 死亡
+        if (hp <= 0) Dead();
     }
+
+
 
     /// <summary>
     /// 死亡
     /// </summary>
     private void Dead()
     {
-
+        ani.SetTrigger("死亡觸發"); // 死亡動畫
+        final.SetActive(true);      // 顯示結束畫面
+        speed = 0;                  // 速度 = 0
+        dead = true;                // 死亡 = 打勾
+        textTitle.text = "你掛了...";
     }
+
+
 
     /// <summary>
     /// 過關
     /// </summary>
     private void Pass()
     {
+        speed = 0;             // 速度 = 0
+        final.SetActive(true); // 顯示結束畫面
+        textTitle.text = "恭喜你過關了!!";
+        textFinalCoin.text = "本次金幣數量 :" + coin;
 
     }
 
@@ -140,14 +181,36 @@ public class Player : MonoBehaviour
     #region 事件
     private void Start()
     {
-
+        hpMax = hp; // 最大血量 = 血量
     }
 
     private void Update()
     {
+        if (dead) return; // 如果死亡跳出
+        if (transform.position.y <= -5) Dead();  // 第二種死法 
+
         Jump();
         Slide();
         Move();
+    }
+
+    // 碰撞(觸發)事件 :
+    // 兩個物件必須有一個勾選 Is Trigger
+    // Enter 進入時執行一次
+    // Stay  碰撞實執行一次 一秒約60次
+    // Exit  離開時執行一次
+    // 參數 : 紀錄碰撞資訊
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        // 如果 碰撞資訊.標籤 等於 金幣 吃掉金幣 (碰撞資訊.遊戲物件)
+        if (collision.tag == "金幣") EatCoin(collision.gameObject);
+
+        // 如果 碰到障礙物 受傷
+        if (collision.tag == "障礙物") Hit(collision.gameObject);
+
+        //如果 碰撞資訊.名稱 等於 傳送門 過關
+        if (collision.name == "傳送門")Pass();
     }
 
     // 繪製圖示事件：繪製輔助線條，僅在 Scene 看得到
